@@ -1,42 +1,25 @@
-from TCLIService.ttypes import TOpenSessionReq, TGetTablesReq, TFetchResultsReq,\
-  TStatusCode, TGetResultSetMetadataReq, TGetColumnsReq, TType, TTypeId, \
-  TExecuteStatementReq, TGetOperationStatusReq, TFetchOrientation, TCloseOperationReq, \
-  TCloseSessionReq, TGetSchemasReq, TGetLogReq, TCancelOperationReq, TGetCatalogsReq, TGetInfoReq
+from .TCLIService.ttypes import TFetchResultsReq, TGetResultSetMetadataReq,\
+                                TTypeId, TExecuteStatementReq, TFetchOrientation,\
+                                TCloseOperationReq, TGetSchemasReq
 
-from error import Pyhs2Exception
+from .error import Pyhs2Exception
 import threading
 from dtepy.pive import userprops
 
+ENTRY_TYPES = ('primitiveEntry','mapEntry','unionEntry','arrayEntry','structEntry','userDefinedTypeEntry')
+VALUE_TYPES = ('boolVal','byteVal','i16Val','i32Val','i64Val','doubleVal','stringVal')
+
 def get_type(typeDesc):
     for ttype in typeDesc.types:
-        if ttype.primitiveEntry is not None:
-            return TTypeId._VALUES_TO_NAMES[ttype.primitiveEntry.type]
-        elif ttype.mapEntry is not None:
-            return ttype.mapEntry
-        elif ttype.unionEntry is not None:
-            return ttype.unionEntry
-        elif ttype.arrayEntry is not None:
-            return ttype.arrayEntry
-        elif ttype.structEntry is not None:
-            return ttype.structEntry
-        elif ttype.userDefinedTypeEntry is not None:
-            return ttype.userDefinedTypeEntry
+        for entry in ENTRY_TYPES:
+            e = getattr(ttype, entry, None)
+            if e:
+                return e if entry != 'primitiveEntry' else TTypeId._VALUES_TO_NAMES[ttype.primitiveEntry.type]
 
 def get_value(colValue):
-    if colValue.boolVal is not None:
-      return colValue.boolVal.value
-    elif colValue.byteVal is not None:
-      return colValue.byteVal.value
-    elif colValue.i16Val is not None:
-      return colValue.i16Val.value
-    elif colValue.i32Val is not None:
-      return colValue.i32Val.value
-    elif colValue.i64Val is not None:
-      return colValue.i64Val.value
-    elif colValue.doubleVal is not None:
-      return colValue.doubleVal.value
-    elif colValue.stringVal is not None:
-      return colValue.stringVal.value
+    for val_typ in VALUE_TYPES:
+        vt = getattr(colValue, val_typ, None)
+        if vt: return vt.value
 
 class Cursor(object):
     session = None
@@ -58,8 +41,8 @@ class Cursor(object):
 
     def execute(self, hql, conf=None):
         self.hasMoreRows = True
-        conf = userprops.HiveUserProps().get_hive_user_props_dict() if conf is None else conf
-        query = TExecuteStatementReq(self.session, statement=hql, confOverlay=conf)
+        confOL = conf or userprops.HiveUserProps().get_hive_user_props_dict()
+        query = TExecuteStatementReq(self.session, statement=hql, confOverlay=confOL)
         res = self.client.ExecuteStatement(query)
         self.operationHandle = res.operationHandle
         if res.status.errorCode is not None:
@@ -68,7 +51,7 @@ class Cursor(object):
     def fetch(self):
         rows = []
         while self.hasMoreRows:
-            rows = rows + self.fetchSet()
+            rows += self.fetchSet()
         return rows
 
     def fetchSet(self):
@@ -80,9 +63,10 @@ class Cursor(object):
         return rows
 
     def _fetchBlock(self):
-        """ internal use only.
-	 get a block of rows from the server and put in standby block.
-         future enhancements:
+        """
+        internal use only.
+        get a block of rows from the server and put in standby block.
+        Future Enhancements:
          (1) locks for multithreaded access (protect from multiple calls)
          (2) allow for prefetch by use of separate thread
         """
@@ -104,34 +88,35 @@ class Cursor(object):
         return
 
     def fetchone(self):
-        """ fetch a single row. a lock object is used to assure that a single 
-	 record will be fetched and all housekeeping done properly in a 
-	 multithreaded environment.
-         as getting a block is currently synchronous, this also protects 
-	 against multiple block requests (but does not protect against 
-	 explicit calls to to _fetchBlock())
+        """
+        Fetch a single row. A lock object is used to assure that a single 
+        record will be fetched and all housekeeping done properly in a 
+        multithreaded environment.
+        As getting a block is currently synchronous, this also protects 
+        against multiple block requests (but does not protect against 
+        explicit calls to to _fetchBlock())
         """
         self._cursorLock.acquire()
 
         # if there are available records in current block, 
-	# return one and advance counter
+    	# return one and advance counter
         if self._currentBlock is not None and self._currentRecordNum < len(self._currentBlock):
-           x = self._currentRecordNum
-           self._currentRecordNum += 1
-           self._cursorLock.release()
-           return self._currentBlock[x]
+            x = self._currentRecordNum
+            self._currentRecordNum += 1
+            self._cursorLock.release()
+            return self._currentBlock[x]
 
         # if no standby block is waiting, fetch a block
         if self._standbyBlock is None:
-           # TODO - make sure exceptions due to problems in getting the block 
-	   # of records from the server are handled properly
-           self._fetchBlock()
+            # TODO - make sure exceptions due to problems in getting the block 
+            # of records from the server are handled properly
+            self._fetchBlock()
 
         # if we still do not have a standby block (or it is empty), 
-	# return None - no more data is available
+    	# return None - no more data is available
         if self._standbyBlock is None or len(self._standbyBlock)==0:
-           self._cursorLock.release()
-           return None
+            self._cursorLock.release()
+            return None
 
         #  move the standby to current
         self._currentBlock = self._standbyBlock 
@@ -143,10 +128,11 @@ class Cursor(object):
         return self._currentBlock[0]
 
     def fetchmany(self,size=-1):
-        """ return a sequential set of records. This is guaranteed by locking, 
-	 so that no other thread can grab a few records while a set is fetched.
-         this has the side effect that other threads may have to wait for 
-         an arbitrary long time for the completion of the current request.
+        """
+        Return a sequential set of records. This is guaranteed by locking, 
+        so that no other thread can grab a few records while a set is fetched.
+        This has the side effect that other threads may have to wait for 
+        an arbitrary long time for the completion of the current request.
         """
         self._cursorLock.acquire()
 
@@ -161,20 +147,20 @@ class Cursor(object):
         return recs
 
     def fetchall(self):
-        """ returns the remainder of records from the query. This is 
-	 guaranteed by locking, so that no other thread can grab a few records 
-	 while the set is fetched. This has the side effect that other threads 
-	 may have to wait for an arbitrary long time until this query is done 
-	 before they can return (obviously with None).
+        """
+        Returns the remainder of records from the query. This is 
+        guaranteed by locking, so that no other thread can grab a few records 
+        while the set is fetched. This has the side effect that other threads 
+        may have to wait for an arbitrary long time until this query is done 
+        before they can return (obviously with None).
         """
         self._cursorLock.acquire()
 
         recs = []
-        while True:
-            rec = self.fetchone()
-            if rec is None:
-               break
+        rec = self.fetchone()
+        while rec is not None:
             recs.append(rec)
+            rec = self.fetchone()
 
         self._cursorLock.release()
         return recs

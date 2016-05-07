@@ -1,15 +1,14 @@
-import sys
-
 from thrift.protocol.TBinaryProtocol import TBinaryProtocol
 from thrift.transport.TSocket import TSocket
 from thrift.transport.TTransport import TBufferedTransport
 import sasl
 from cloudera.thrift_sasl import TSaslClientTransport
 
-from TCLIService import TCLIService
+from .TCLIService import TCLIService
 
-from cursor import Cursor
-from TCLIService.ttypes import TCloseSessionReq,TOpenSessionReq
+from .cursor import Cursor
+from .TCLIService.ttypes import TCloseSessionReq,TOpenSessionReq
+AUTH_MECHANISMS = frozenset(['NOSASL', 'PLAIN', 'KERBEROS', 'LDAP'])
 
 class Connection(object):
     DEFAULT_KRB_SERVICE = 'hive'
@@ -17,9 +16,9 @@ class Connection(object):
     session = None
 
     def __init__(self, host=None, port=10000, authMechanism=None, user=None, password=None, database=None, configuration=None, timeout=None):
-        authMechanisms = set(['NOSASL', 'PLAIN', 'KERBEROS', 'LDAP'])
-        if authMechanism not in authMechanisms:
-            raise NotImplementedError('authMechanism is either not supported or not implemented')
+        if authMechanism not in AUTH_MECHANISMS:
+            err_msg = 'authMechanism is not one of the supported ones: [%s]' % ','.join(repr(a) for a in AUTH_MECHANISMS)
+            raise NotImplementedError(err_msg)
         #Must set a password for thrift, even if it doesn't need one
         #Open issue with python-sasl
         if authMechanism == 'PLAIN' and (password is None or len(password) == 0):
