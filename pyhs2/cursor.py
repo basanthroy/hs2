@@ -7,7 +7,6 @@ import threading
 from dtepy.pive import userprops
 
 ENTRY_TYPES = ('primitiveEntry','mapEntry','unionEntry','arrayEntry','structEntry','userDefinedTypeEntry')
-VALUE_TYPES = ('boolVal','byteVal','i16Val','i32Val','i64Val','doubleVal','stringVal')
 
 def get_type(typeDesc):
     for ttype in typeDesc.types:
@@ -17,9 +16,20 @@ def get_type(typeDesc):
                 return e if entry != 'primitiveEntry' else TTypeId._VALUES_TO_NAMES[ttype.primitiveEntry.type]
 
 def get_value(colValue):
-    for val_typ in VALUE_TYPES:
-        vt = getattr(colValue, val_typ, None)
-        if vt: return vt.value
+    if colValue.boolVal is not None:
+      return colValue.boolVal.value
+    elif colValue.byteVal is not None:
+      return colValue.byteVal.value
+    elif colValue.i16Val is not None:
+      return colValue.i16Val.value
+    elif colValue.i32Val is not None:
+      return colValue.i32Val.value
+    elif colValue.i64Val is not None:
+      return colValue.i64Val.value
+    elif colValue.doubleVal is not None:
+      return colValue.doubleVal.value
+    elif colValue.stringVal is not None:
+      return colValue.stringVal.value
 
 class Cursor(object):
     session = None
