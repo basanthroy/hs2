@@ -16,10 +16,8 @@ def get_type(typeDesc):
                 return e if entry != 'primitiveEntry' else TTypeId._VALUES_TO_NAMES[ttype.primitiveEntry.type]
 
 def get_value(colValue):
-    if colValue.boolVal is not None:
-      return colValue.boolVal.value
-    elif colValue.byteVal is not None:
-      return colValue.byteVal.value
+    if colValue.stringVal is not None:
+      return colValue.stringVal.value
     elif colValue.i16Val is not None:
       return colValue.i16Val.value
     elif colValue.i32Val is not None:
@@ -28,8 +26,10 @@ def get_value(colValue):
       return colValue.i64Val.value
     elif colValue.doubleVal is not None:
       return colValue.doubleVal.value
-    elif colValue.stringVal is not None:
-      return colValue.stringVal.value
+    elif colValue.boolVal is not None:
+      return colValue.boolVal.value
+    elif colValue.byteVal is not None:
+      return colValue.byteVal.value
 
 class Cursor(object):
     session = None
@@ -51,7 +51,8 @@ class Cursor(object):
 
     def execute(self, hql, conf=None):
         self.hasMoreRows = True
-        confOL = conf or userprops.HiveUserProps().get_hive_user_props_dict()
+        confOL = userprops.HiveUserProps().get_hive_user_props_dict()
+        confOL.update(conf or {})
         query = TExecuteStatementReq(self.session, statement=hql, confOverlay=confOL)
         res = self.client.ExecuteStatement(query)
         self.operationHandle = res.operationHandle
@@ -68,7 +69,7 @@ class Cursor(object):
         rows = []
         fetchReq = TFetchResultsReq(operationHandle=self.operationHandle,
                                     orientation=TFetchOrientation.FETCH_NEXT,
-                                    maxRows=10000)
+                                    maxRows=self.MAX_BLOCK_SIZE)
         self._fetch(rows, fetchReq)
         return rows
 
@@ -222,7 +223,7 @@ class Cursor(object):
             for i, col in enumerate(row.colVals):
                 rowData.append(get_value(col))
             rows.append(rowData)
-        if len(resultsRes.results.rows) == 0:
+        if len(resultsRes.results.rows) < self.MAX_BLOCK_SIZE:
             self.hasMoreRows = False
         return rows
 
