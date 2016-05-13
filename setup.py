@@ -12,6 +12,5 @@ setup(
     long_description=open('README.md').read(),
     install_requires=["sasl","thrift","dtepy"],
     dependency_links=['http://dt01.etl.dw.sc.gwallet.com:7001/packages/'],
-    test_suite='pyhs2.test',
-    tests_require=["mock"]
+    test_suite='pyhs2.test'
 )
