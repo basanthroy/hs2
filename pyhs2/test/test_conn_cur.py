@@ -10,10 +10,10 @@ class TestConnCur(unittest.TestCase):
         self.test_db  = 'test_db_4_pyhs2'
         self.test_tbl = 'pyhs2_test_tbl'
         testdata_file = tempfile.NamedTemporaryFile(mode='wb', delete=False)
-        setup_hqls = ['CREATE DATABASE IF NOT EXISTS {}'.format(self.test_db),
-                      'USE {}'.format(self.test_db),
-                      "CREATE TABLE IF NOT EXISTS {} (STR_COL STRING, BIGINT_COL BIGINT) ROW FORMAT DELIMITED FIELDS TERMINATED BY '\\t'".format(self.test_tbl),
-                      "LOAD DATA LOCAL INPATH '{fp}' INTO TABLE {tbl}".format(fp=testdata_file.name, tbl=self.test_tbl)]
+        setup_hqls    = ['CREATE DATABASE IF NOT EXISTS {}'.format(self.test_db),
+                         'USE {}'.format(self.test_db),
+                         "CREATE TABLE IF NOT EXISTS {} (STR_COL STRING, BIGINT_COL BIGINT) ROW FORMAT DELIMITED FIELDS TERMINATED BY '\\t'".format(self.test_tbl),
+                         "LOAD DATA LOCAL INPATH '{fp}' INTO TABLE {tbl}".format(fp=testdata_file.name, tbl=self.test_tbl)]
         self.test_data = [['str_%d' % i, i] for i in range(1000000,1020010)]
         testdata_file.write('\n'.join( ( '\t'.join((str(s) for s in td)) for td in self.test_data)))
         testdata_file.flush()
@@ -39,6 +39,5 @@ class TestConnCur(unittest.TestCase):
                 cur.execute('DROP DATABASE IF EXISTS {} CASCADE'.format(self.test_db))
               
 if __name__ == '__main__':
-  suite = unittest.TestLoader().loadTestsFromTestCase(TestConnCur)
-  unittest.TextTestRunner(verbosity=2).run(suite)
-  #unittest.main() # alternative to above 2 lines for less detailed output
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestConnCur)
+    unittest.TextTestRunner(verbosity=2).run(suite)
