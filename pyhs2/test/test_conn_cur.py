@@ -1,10 +1,14 @@
 import unittest, tempfile, pyhs2, os, stat
+import xml.etree.ElementTree
 from pyhs2.connections import Connection
 
 class TestConnCur(unittest.TestCase):
 
     def setUp(self):
-        self.hive_cfg = {'host' : "localhost", 'port' : 10000,
+        # Find Hive Server 2 port dynamically
+        hsx = '/etc/hive/conf/hive-site.xml'
+        hs2port = xml.etree.ElementTree.parse(hsx).find("./property/[name='hive.server2.thrift.port']").findtext('value')
+        self.hive_cfg = {'host' : "localhost", 'port' : hs2port,
                          'authMechanism' : "PLAIN", 'user' : "bruderman",
                          'password' : "brad"}
         self.test_db  = 'test_db_4_pyhs2'
