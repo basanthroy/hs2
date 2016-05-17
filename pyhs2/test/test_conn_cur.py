@@ -9,7 +9,7 @@ class TestConnCur(unittest.TestCase):
                          'password' : "brad"}
         self.test_db  = 'test_db_4_pyhs2'
         self.test_tbl = 'pyhs2_test_tbl'
-        testdata_file = tempfile.NamedTemporaryFile(mode='wb', delete=False)
+        testdata_file = tempfile.NamedTemporaryFile(mode='wb')
         setup_hqls    = ['CREATE DATABASE IF NOT EXISTS {}'.format(self.test_db),
                          'USE {}'.format(self.test_db),
                          "CREATE TABLE IF NOT EXISTS {} (STR_COL STRING, BIGINT_COL BIGINT) ROW FORMAT DELIMITED FIELDS TERMINATED BY '\\t'".format(self.test_tbl),
