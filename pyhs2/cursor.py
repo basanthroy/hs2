@@ -218,8 +218,11 @@ class Cursor(object):
 
     def _fetch(self, rows, fetchReq):
         resultsRes = self.client.FetchResults(fetchReq)
-        rows += [ [get_value(col) for col in row.colVals] for row in resultsRes.results.rows ]
-        if len(resultsRes.results.rows) < self.MAX_BLOCK_SIZE:
+        if resultsRes.results:
+            rows += [ [get_value(col) for col in row.colVals] for row in resultsRes.results.rows ]
+            if len(resultsRes.results.rows) < self.MAX_BLOCK_SIZE:
+                self.hasMoreRows = False
+        else:
             self.hasMoreRows = False
         return rows
 

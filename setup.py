@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='pyhs2',
-    version='0.6.1',
+    version='0.6.2',
     author='RadiumOne Data Team',
     author_email='dwteam@RadiumOne.com',
     packages=['pyhs2', 'pyhs2/cloudera', 'pyhs2/TCLIService'],
